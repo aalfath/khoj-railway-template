@@ -1,0 +1,39 @@
+{
+	admin off
+	auto_https off
+	persist_config off
+	servers {
+		trusted_proxies static private_ranges 100.64.0.0/10
+	}
+}
+
+:{$PORT} {
+	# Health check for Railway: answers without a login.
+	@health path /healthz
+	handle @health {
+		rewrite * /api/health
+		reverse_proxy 127.0.0.1:42110
+	}
+
+	# Khoj clients (Obsidian, Emacs, desktop) send the generated client token.
+	@client header Authorization "Bearer {$KHOJ_CLIENT_TOKEN}"
+	handle @client {
+		reverse_proxy 127.0.0.1:42110 {
+			flush_interval -1
+			header_up -Authorization
+			header_up X-Forwarded-Proto https
+		}
+	}
+
+	# Everything else (web app, API, admin panel) needs the admin login.
+	handle {
+		basic_auth {
+			{$KHOJ_ADMIN_EMAIL} {$KHOJ_AUTH_HASH}
+		}
+		reverse_proxy 127.0.0.1:42110 {
+			flush_interval -1
+			header_up -Authorization
+			header_up X-Forwarded-Proto https
+		}
+	}
+}
