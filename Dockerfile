@@ -10,7 +10,13 @@ RUN chmod 755 /railway/start.sh && caddy version
 
 # Keep torch, tokenizers and glibc from sizing themselves to the host's CPU count
 # (Railway shows 32 CPUs inside a small service). Models and logs live on the volume.
-ENV KHOJ_TELEMETRY_DISABLE=True \
+# Khoj 2.0.0-beta.28 calls Django's sync ORM from its async chat path
+# (get_default_chat_model), so the first chat on a new database fails with
+# SynchronousOnlyOperation. Allow it, as Khoj's own dev setup effectively does.
+# COLUMNS widens Rich tracebacks so they stay under Railway's log rate limit.
+ENV DJANGO_ALLOW_ASYNC_UNSAFE=true \
+    COLUMNS=160 \
+    KHOJ_TELEMETRY_DISABLE=True \
     HF_HUB_DISABLE_TELEMETRY=1 \
     HF_HOME=/root/.khoj/hf \
     OMP_NUM_THREADS=2 \
