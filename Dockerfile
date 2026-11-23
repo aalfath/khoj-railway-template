@@ -12,7 +12,7 @@ RUN chmod 755 /railway/start.sh && caddy version
 # (Railway shows 32 CPUs inside a small service). Models and logs live on the volume.
 # Khoj 2.0.0-beta.28 calls Django's sync ORM from its async chat path
 # (get_default_chat_model), so the first chat on a new database fails with
-# SynchronousOnlyOperation. Allow it, as Khoj's own dev setup effectively does.
+# SynchronousOnlyOperation. Allow it (single-user setup; the call is a quick read).
 # COLUMNS widens Rich tracebacks so they stay under Railway's log rate limit.
 ENV DJANGO_ALLOW_ASYNC_UNSAFE=true \
     COLUMNS=160 \
