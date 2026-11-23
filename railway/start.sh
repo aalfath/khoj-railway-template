@@ -13,8 +13,16 @@ export PORT
 for v in KHOJ_ADMIN_EMAIL KHOJ_ADMIN_PASSWORD KHOJ_CLIENT_TOKEN KHOJ_DJANGO_SECRET_KEY POSTGRES_HOST POSTGRES_PASSWORD; do
   [ -n "${!v:-}" ] || fail "$v is empty. Set it in the service's variables."
 done
-if [ -z "${OPENAI_API_KEY:-}" ] && [ -z "${OPENAI_BASE_URL:-}" ]; then
+if [ -z "${OPENAI_API_KEY:-}${OPENAI_BASE_URL:-}${ANTHROPIC_API_KEY:-}${GEMINI_API_KEY:-}" ]; then
   fail "OPENAI_API_KEY is empty. Add your OpenAI (or OpenAI-compatible) API key to the Khoj service's variables."
+fi
+
+# Khoj loads torch and two local search models at boot and needs about 1.2 GB
+# of RAM. Below that it would be OOM-killed mid-start, so say so plainly.
+mem_max="$(cat /sys/fs/cgroup/memory.max 2>/dev/null || echo max)"
+if [ "$mem_max" != "max" ] && [ "${KHOJ_SKIP_MEMORY_CHECK:-}" != "true" ] \
+   && [ "$mem_max" -lt $((1200 * 1024 * 1024)) ]; then
+  fail "this service has $((mem_max / 1024 / 1024)) MB of RAM, but Khoj needs about 1.2 GB (2 GB recommended). Raise the service's memory limit (Railway Hobby plan or higher) and redeploy."
 fi
 [ "${#KHOJ_ADMIN_PASSWORD}" -le 72 ] || fail "KHOJ_ADMIN_PASSWORD must be 72 characters or fewer."
 case "$KHOJ_CLIENT_TOKEN" in *[[:space:]\"]*) fail "KHOJ_CLIENT_TOKEN must not contain spaces or quotes.";; esac

@@ -88,19 +88,23 @@ else:
         user.save()
         log("admin login updated from the service variables")
 
+    # The variables win over the admin panel for the key and (when set) the base URL.
     key = os.environ.get("OPENAI_API_KEY", "").strip()
-    base = os.environ.get("OPENAI_BASE_URL", "").strip() or None
-    if key or base:
-        n = 0
-        for api in AiModelApi.objects.filter(name__in=["OpenAI", "Ollama"]):
-            new_key = key or api.api_key
-            if api.api_key != new_key or api.api_base_url != base:
-                api.api_key = new_key
-                api.api_base_url = base
-                api.save()
-                n += 1
-        if n:
-            log("OpenAI-compatible key/base URL updated from the service variables")
+    base = os.environ.get("OPENAI_BASE_URL", "").strip()
+    n = 0
+    for api in AiModelApi.objects.filter(name__in=["OpenAI", "Ollama"]):
+        changed = False
+        if key and api.api_key != key:
+            api.api_key = key
+            changed = True
+        if base and api.api_base_url != base:
+            api.api_base_url = base
+            changed = True
+        if changed:
+            api.save()
+            n += 1
+    if n:
+        log("OpenAI-compatible key/base URL updated from the service variables")
 
 cur.execute("SELECT pg_advisory_unlock(%s)", (LOCK_ID,))
 conn.close()
